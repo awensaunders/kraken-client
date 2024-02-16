@@ -1,0 +1,11 @@
+query getAccountInfo {
+    viewer {
+        givenName
+        familyName
+        email
+        liveSecretKey
+        accounts(restrictToPublicFacingBrands: false) {
+            number, status, balance, brand
+        }
+    }
+}

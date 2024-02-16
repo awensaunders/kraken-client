@@ -1,0 +1,36 @@
+query accountAgreementAndMeterDetails($account: String!) {
+  account(accountNumber:$account){
+    electricityAgreements(active:true){
+      id,
+      validTo,
+      validFrom,
+      tariff{
+        __typename
+        ... on StandardTariff{
+            id
+            productCode
+            standingCharge
+            unitRate
+        }
+        ... on TariffType {
+            id
+            productCode
+            standingCharge
+        }
+      }
+      meterPoint{
+        mpan,
+        status
+        meters{
+          serialNumber
+          smartDevices {
+            serialNumber
+          }
+        }
+      }
+    }
+    campaigns{
+      name
+    }
+  }
+}

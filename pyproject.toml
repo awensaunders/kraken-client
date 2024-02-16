@@ -13,6 +13,14 @@ pydantic = "^2.6.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.2.1"
+ariadne-codegen = {extras = ["subscriptions"], version = "^0.12.0"}
+debugpy = "^1.8.1"
+
+[tool.ariadne-codegen]
+queries_path = "gql/"
+# remote_schema_url = "https://api.eonnext-kraken.energy/v1/graphql/"
+schema_path = "schema.gql"
+plugins = ["ariadne_codegen.contrib.shorter_results.ShorterResultsPlugin"]
 
 [build-system]
 requires = ["poetry-core"]
