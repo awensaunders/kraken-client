@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "energy-api"
+version = "0.1.0"
+description = "This will interact with the kraken api so as to be abb information."
+authors = ["Awen Saunders <me@awen.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+gql = {extras = ["aiohttp", "httpx"], version = "^3.5.0"}
+httpx = "^0.26.0"
+pydantic = "^2.6.1"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.2.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,7 @@
+mutation getKrakenToken($email: String, $password: String) {
+  obtainKrakenToken(input: { email: $email, password: $password }) {
+    token
+    refreshToken
+    refreshExpiresIn
+  }
+}
