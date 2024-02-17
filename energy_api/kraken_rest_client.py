@@ -3,8 +3,8 @@ from enum import Enum, StrEnum
 from typing import AsyncIterator, Literal
 import httpx
 import logging
-from rest_api_models.account_models import AccountInformation
-from rest_api_models.consumption_models import ConsumptionEntry, PaginatedConsumption
+from energy_api.rest_api_models.account_models import AccountInformation
+from energy_api.rest_api_models.consumption_models import ConsumptionEntry, PaginatedConsumption
 
 
 logger = logging.getLogger(__name__)

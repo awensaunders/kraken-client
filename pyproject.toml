@@ -25,6 +25,9 @@ queries_path = "gql/"
 schema_path = "schema.gql"
 plugins = ["ariadne_codegen.contrib.shorter_results.ShorterResultsPlugin"]
 
+[tool.poetry.scripts]
+energy-api = "energy_api.main:app"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
