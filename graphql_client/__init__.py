@@ -193,7 +193,14 @@ from .get_account_info import (
     GetAccountInfoViewer,
     GetAccountInfoViewerAccounts,
 )
-from .get_kraken_token import GetKrakenToken, GetKrakenTokenObtainKrakenToken
+from .get_kraken_token_api_key import (
+    GetKrakenTokenAPIKey,
+    GetKrakenTokenAPIKeyObtainKrakenToken,
+)
+from .get_kraken_token_email_password import (
+    GetKrakenTokenEmailPassword,
+    GetKrakenTokenEmailPasswordObtainKrakenToken,
+)
 from .input_types import (
     AcceptGoodsQuoteInput,
     AccountBillingAddressInput,
@@ -587,8 +594,10 @@ __all__ = [
     "GetAccountInfoViewer",
     "GetAccountInfoViewerAccounts",
     "GetEmbeddedSecretForNewPaymentInstructionInput",
-    "GetKrakenToken",
-    "GetKrakenTokenObtainKrakenToken",
+    "GetKrakenTokenAPIKey",
+    "GetKrakenTokenAPIKeyObtainKrakenToken",
+    "GetKrakenTokenEmailPassword",
+    "GetKrakenTokenEmailPasswordObtainKrakenToken",
     "GraphQLClientError",
     "GraphQLClientGraphQLError",
     "GraphQLClientGraphQLMultiError",

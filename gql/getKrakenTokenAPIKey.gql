@@ -1,0 +1,7 @@
+mutation getKrakenTokenAPIKey($APIKey: String!) {
+  obtainKrakenToken(input: { APIKey: $APIKey}) {
+    token
+    refreshToken
+    refreshExpiresIn
+  }
+}

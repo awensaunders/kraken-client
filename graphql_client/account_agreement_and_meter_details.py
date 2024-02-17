@@ -77,6 +77,7 @@ class AccountAgreementAndMeterDetailsAccountElectricityAgreementsTariffPrepayTar
 
 
 class AccountAgreementAndMeterDetailsAccountElectricityAgreementsMeterPoint(BaseModel):
+    id: str
     mpan: str
     status: Optional[str]
     meters: Optional[
@@ -104,6 +105,8 @@ class AccountAgreementAndMeterDetailsAccountElectricityAgreementsMeterPointMeter
 class AccountAgreementAndMeterDetailsAccountElectricityAgreementsMeterPointMetersSmartDevices(
     BaseModel
 ):
+    id: str
+    device_id: str = Field(alias="deviceId")
     serial_number: str = Field(alias="serialNumber")
 
 

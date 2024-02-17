@@ -11,7 +11,14 @@ from .async_base_client import AsyncBaseClient
 from .base_model import UNSET, UnsetType
 from .generate_secret_key import GenerateSecretKey, GenerateSecretKeyRegenerateSecretKey
 from .get_account_info import GetAccountInfo, GetAccountInfoViewer
-from .get_kraken_token import GetKrakenToken, GetKrakenTokenObtainKrakenToken
+from .get_kraken_token_api_key import (
+    GetKrakenTokenAPIKey,
+    GetKrakenTokenAPIKeyObtainKrakenToken,
+)
+from .get_kraken_token_email_password import (
+    GetKrakenTokenEmailPassword,
+    GetKrakenTokenEmailPasswordObtainKrakenToken,
+)
 
 
 def gql(q: str) -> str:
@@ -45,11 +52,14 @@ class Client(AsyncBaseClient):
                     }
                   }
                   meterPoint {
+                    id
                     mpan
                     status
-                    meters {
+                    meters(includeInactive: false) {
                       serialNumber
                       smartDevices {
+                        id
+                        deviceId
                         serialNumber
                       }
                     }
@@ -123,15 +133,39 @@ class Client(AsyncBaseClient):
         data = self.get_data(response)
         return GetAccountInfo.model_validate(data).viewer
 
-    async def get_kraken_token(
+    async def get_kraken_token_api_key(
+        self, api_key: str, **kwargs: Any
+    ) -> Optional[GetKrakenTokenAPIKeyObtainKrakenToken]:
+        query = gql(
+            """
+            mutation getKrakenTokenAPIKey($APIKey: String!) {
+              obtainKrakenToken(input: {APIKey: $APIKey}) {
+                token
+                refreshToken
+                refreshExpiresIn
+              }
+            }
+            """
+        )
+        variables: Dict[str, object] = {"APIKey": api_key}
+        response = await self.execute(
+            query=query,
+            operation_name="getKrakenTokenAPIKey",
+            variables=variables,
+            **kwargs
+        )
+        data = self.get_data(response)
+        return GetKrakenTokenAPIKey.model_validate(data).obtain_kraken_token
+
+    async def get_kraken_token_email_password(
         self,
         email: Union[Optional[str], UnsetType] = UNSET,
         password: Union[Optional[str], UnsetType] = UNSET,
         **kwargs: Any
-    ) -> Optional[GetKrakenTokenObtainKrakenToken]:
+    ) -> Optional[GetKrakenTokenEmailPasswordObtainKrakenToken]:
         query = gql(
             """
-            mutation getKrakenToken($email: String, $password: String) {
+            mutation getKrakenTokenEmailPassword($email: String, $password: String) {
               obtainKrakenToken(input: {email: $email, password: $password}) {
                 token
                 refreshToken
@@ -142,7 +176,10 @@ class Client(AsyncBaseClient):
         )
         variables: Dict[str, object] = {"email": email, "password": password}
         response = await self.execute(
-            query=query, operation_name="getKrakenToken", variables=variables, **kwargs
+            query=query,
+            operation_name="getKrakenTokenEmailPassword",
+            variables=variables,
+            **kwargs
         )
         data = self.get_data(response)
-        return GetKrakenToken.model_validate(data).obtain_kraken_token
+        return GetKrakenTokenEmailPassword.model_validate(data).obtain_kraken_token

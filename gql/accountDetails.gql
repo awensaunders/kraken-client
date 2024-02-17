@@ -19,11 +19,14 @@ query accountAgreementAndMeterDetails($account: String!) {
         }
       }
       meterPoint{
-        mpan,
+        id
+        mpan
         status
-        meters{
+        meters(includeInactive: false){
           serialNumber
           smartDevices {
+            id
+            deviceId
             serialNumber
           }
         }
