@@ -1,59 +1,130 @@
-import asyncio
+#!/usr/bin/env python3
+
+import anyio
 import logging
 import logging.config
 import os
+from typing import Annotated
+
+from energy_api.credentials import Credentials
 from graphql_client import Client
-from energy_api.kraken_rest_client import KrakenRestClient
+from energy_api.kraken_rest_client import Granularity, KrakenRestClient
 import jwt
-import datetime
+from datetime import datetime, UTC, timedelta
+import typer
+from rich import print
+from rich.console import Console
+from rich.table import Table
+
+app = typer.Typer()
 
 
-async def main():
-    logger = logging.getLogger("energy_api.main")
-    endpoint = "https://api.eonnext-kraken.energy/v1/graphql/"
-    anonymous_client = Client(endpoint)
-    email = os.environ.get("KRAKEN_EMAIL", None)
-    password = os.environ.get("KRAKEN_PASSWORD", None)
-    api_key = os.environ.get("KRAKEN_API_KEY", None)
+@app.command()
+def user_login(
+    username: Annotated[str, typer.Option(prompt=True)],
+    password: Annotated[str, typer.Option(prompt=True, hide_input=True)],
+    endpoint: Annotated[str, typer.Option()] = "https://api.eonnext-kraken.energy",
+):
+    try:
+        creds = Credentials.load_from_disk()
+        typer.confirm("Credentials already exist. Overwrite?", abort=True)
+    except FileNotFoundError:
+        pass
+    creds = anyio.run(_user_login, username, password, endpoint)
+    creds.save_to_disk()
 
-    if email is not None and password is not None:
-        res = await anonymous_client.get_kraken_token_email_password(email, password)
-        token = res.token
-    elif api_key is not None:
-        res = await anonymous_client.get_kraken_token_api_key(api_key)
-        token = res.token
-    else:
-        raise Exception("No credentials found")
 
-    logger.info("Logged In Successfully")
-    logger.debug(f"Token: {token}")
+async def _user_login(username: str, password: str, endpoint: str) -> Credentials:
+    gql_endpoint = endpoint + "/v1/graphql/"
+    client = Client(gql_endpoint)
+    print(f"Logging in as {username}")
+    res = await client.get_kraken_token_email_password(username, password)
+    token = res.token
     token_decoded = jwt.decode(token, options={"verify_signature": False})
-    exp = token_decoded["exp"]
-    expiry = datetime.datetime.fromtimestamp(exp, tz=datetime.UTC)
-    logger.debug(f"Token Expiry: {expiry}")
-    refresh_expiry = datetime.datetime.fromtimestamp(
-        res.refresh_expires_in, tz=datetime.UTC
-    )
-    logger.debug(f"Refresh Token Expiry: {refresh_expiry}")
+    token_expires_at = datetime.fromtimestamp(token_decoded["exp"], tz=UTC)
+    refresh_expires_at = datetime.fromtimestamp(res.refresh_expires_in, tz=UTC)
+    authed_client = Client(gql_endpoint, headers={"Authorization": f"{token}"})
+    account_details = await authed_client.get_account_info()
+    print(f"Logged in as {account_details.given_name} {account_details.family_name}")
+    secret_key = await get_or_generate_secret_key(authed_client)
 
-    headers = {"Authorization": f"{token}"}
-    authed_client = Client(endpoint, headers=headers)
-    res = await authed_client.get_account_info()
-    logger.info(f"Logged in as {res.given_name} {res.family_name}")
+    return Credentials(
+        secret_key=secret_key,
+        endpoint=endpoint,
+        token=token,
+        token_expires_at=token_expires_at,
+        refresh_token=res.refresh_token,
+        refresh_expires_at=refresh_expires_at,
+    )
+
+
+async def get_or_generate_secret_key(client: Client) -> str:
+    res = await client.get_account_info()
     if res.live_secret_key is not None:
-        logger.debug(f"Live Secret Key: {res.live_secret_key}")
+        print("Using existing live secret key")
+        return res.live_secret_key
     else:
-        logger.info("No live secret key found")
-        logger.info("Creating a new live secret key")
-        res = await authed_client.generate_secret_key()
-        logger.info(f"Generated new secret key: {res.live_secret_key}")
-    res = await authed_client.get_account_info()
-    accounts = res.accounts
-    logger.debug(f"Account Info: {res.model_dump_json()}")
-    rc = KrakenRestClient("https://api.eonnext-kraken.energy/v1", headers)
-    for account in accounts:
-        logger.info(f"Getting detailed account information for {account.number}")
-        gql_acc_details = await authed_client.account_agreement_and_meter_details(
+        print("No live secret key found")
+        print("Generating a new live secret key")
+        res = await client.generate_secret_key()
+        return res.live_secret_key
+
+
+@app.command()
+def api_key_login(
+    api_key: Annotated[str, typer.Option(prompt=True, hide_input=True)],
+    endpoint: Annotated[str, typer.Option()] = "https://api.eonnext-kraken.energy",
+):
+    try:
+        creds = Credentials.load_from_disk()
+        typer.confirm("Credentials already exist. Overwrite?", abort=True)
+    except FileNotFoundError:
+        pass
+    creds = anyio.run(_api_key_login, api_key, endpoint)
+    creds.save_to_disk()
+
+
+async def _api_key_login(api_key: str, endpoint: str) -> Credentials:
+    gql_endpoint = endpoint + "/v1/graphql/"
+    anonymous_client = Client(gql_endpoint)
+    print("Logging in with API Key")
+    res = await anonymous_client.get_kraken_token_api_key(api_key)
+    token = res.token
+    token_decoded = jwt.decode(token, options={"verify_signature": False})
+    token_expires_at = datetime.fromtimestamp(token_decoded["exp"], tz=UTC)
+    refresh_expires_at = datetime.fromtimestamp(res.refresh_expires_in, tz=UTC)
+    authed_client = Client(gql_endpoint, headers={"Authorization": f"{token}"})
+    account_details = await authed_client.get_account_info()
+    print(f"Logged in as {account_details.given_name} {account_details.family_name}")
+    # We obviously already have the API key, so we don't need to get it
+    return Credentials(
+        secret_key=api_key,
+        endpoint=endpoint,
+        token=token,
+        token_expires_at=token_expires_at,
+        refresh_token=res.refresh_token,
+        refresh_expires_at=refresh_expires_at,
+    )
+
+
+@app.command()
+def consumption(
+    num: Annotated[int, typer.Argument(min=0, max=1000)],
+    granularity: Annotated[
+        Granularity, typer.Argument(case_sensitive=False)
+    ] = Granularity.DAY,
+):
+    creds = Credentials.load_from_disk()
+    anyio.run(_consumption, creds, num, granularity)
+
+async def _consumption(creds: Credentials, num: int, granularity: Granularity):
+    rest_endpoint = creds.endpoint + "/v1"
+    rc = KrakenRestClient(rest_endpoint, {"Authorization": f"{creds.token}"})
+    gql_client = Client(creds.endpoint + "/v1/graphql/", headers={"Authorization": f"{creds.token}"})
+    acc_info = await gql_client.get_account_info()
+    for account in acc_info.accounts:
+        print(f"Getting detailed account information for {account.number}")
+        gql_acc_details = await gql_client.account_agreement_and_meter_details(
             account.number
         )
         active_agreement = gql_acc_details.electricity_agreements[0]
@@ -61,16 +132,31 @@ async def main():
         mpan = active_agreement.meter_point.mpan
         msn = active_agreement.meter_point.meters[0].serial_number
         unit_rate = active_agreement.tariff.unit_rate
-        logger.info(f"Standing Charge: {standing_charge}")
-        logger.info(f"Unit Rate: {unit_rate}")
-        res = await rc.get_account_information(account.number)
-        logger.debug(f"Account Information: {res.model_dump_json()}")
-        logger.info(f"Gathering consumption data for msn: {msn}")
-        consumption = rc.get_consumption(mpan, msn, granularity="day")
-        async for entry in consumption:
-            logger.info(f"Consumption: {entry.model_dump_json()}")
+        print(f"Current Standing Charge: {standing_charge}")
+        print(f"Current Unit Rate: {unit_rate}")
+        if granularity == Granularity.HALFHOUR:
+            period_from = datetime.now(tz=UTC) - (timedelta(minutes=30) * num)
+        elif granularity == Granularity.HOUR:
+            period_from = datetime.now(tz=UTC) - (timedelta(hours=1) * num)
+        elif granularity == Granularity.DAY:
+            period_from = datetime.now(tz=UTC) - (timedelta(days=1) * num)
+        elif granularity == Granularity.MONTH:
+            period_from = datetime.now(tz=UTC) - (timedelta(days=30) * num)
+        else:
+            raise ValueError(f"Unknown granularity: {granularity}")
+        consumption_data =rc.get_consumption(mpan, msn, granularity=granularity, period_from=period_from)
+
+        table = Table(title="Consumption Data")
+        table.add_column("Period Start")
+        table.add_column("Period End")
+        table.add_column("Consumption (kWh)")
+        async for entry in consumption_data:
+            table.add_row(str(entry.interval_start), str(entry.interval_end), str(entry.consumption))
+        console = Console()
+        console.print(table)
+        typer.Exit()
+
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+    app()

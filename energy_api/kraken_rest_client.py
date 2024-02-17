@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, UTC
+from enum import Enum, StrEnum
 from typing import AsyncIterator, Literal
 import httpx
 import logging
@@ -8,6 +9,12 @@ from rest_api_models.consumption_models import ConsumptionEntry, PaginatedConsum
 
 logger = logging.getLogger(__name__)
 
+class Granularity(StrEnum):
+    HALFHOUR = "halfhour"
+    HOUR = "hour"
+    DAY = "day"
+    MONTH = "month"
+    
 
 class KrakenRestClient:
     def __init__(self, endpoint, auth_headers):
@@ -25,7 +32,7 @@ class KrakenRestClient:
         self,
         mpan: str,
         msn: str,
-        granularity: Literal["halfhour", "hour", "day", "month"],
+        granularity: Granularity,
         period_from: datetime = (datetime.now(tz=UTC) - timedelta(days=7)),
         period_to: datetime = datetime.now(tz=UTC),
     ) -> AsyncIterator[ConsumptionEntry]:
