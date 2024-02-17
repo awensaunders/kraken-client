@@ -25,6 +25,11 @@ def user_login(
     password: Annotated[str, typer.Option(prompt=True, hide_input=True)],
     endpoint: Annotated[str, typer.Option()] = "https://api.eonnext-kraken.energy",
 ):
+    """
+    Log into the api using a username (email) and password. Your username and
+    password will not be saved, but a long-lived api key and tokens will be
+    saved to disk.
+    """
     try:
         creds = Credentials.load_from_disk()
         typer.confirm("Credentials already exist. Overwrite?", abort=True)
@@ -75,6 +80,11 @@ def api_key_login(
     api_key: Annotated[str, typer.Option(prompt=True, hide_input=True)],
     endpoint: Annotated[str, typer.Option()] = "https://api.eonnext-kraken.energy",
 ):
+    """
+    Log into the api using an API Key. This is not available through the UI for
+    E.ON Next customers, but is available for Octopus Energy customers. The
+    generated token will be saved to disk, along with your API key.
+    """
     try:
         creds = Credentials.load_from_disk()
         typer.confirm("Credentials already exist. Overwrite?", abort=True)
@@ -114,6 +124,10 @@ def consumption(
         Granularity, typer.Argument(case_sensitive=False)
     ] = Granularity.DAY,
 ):
+    """
+    Get consumption data for the last num periods (approximately, the data may
+    not line up perfectly), where period is defined by the granularity.
+    """
     creds = Credentials.load_from_disk()
     anyio.run(_consumption, creds, num, granularity)
 
